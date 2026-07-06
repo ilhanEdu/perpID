@@ -15,6 +15,7 @@ import { V3_DEXES } from "@/lib/dexRoster";
 import { mergeVolumeResults } from "@/lib/dex/merge";
 import { shareLink } from "@/lib/appUrl";
 import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
+import { ConnectorIcon, WalletMark } from "@/components/WalletIcons";
 import { V3Card } from "./V3Card";
 
 type Step = "idle" | "scanning" | "signing" | "done" | "error";
@@ -530,12 +531,12 @@ export function V3App() {
                           disabled={isPending}
                           onClick={() => addViaConnector(c)}
                         >
-                          {c.icon ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={c.icon} alt="" width={16} height={16} />
-                          ) : (
-                            <span className="v3-wallet-pick-ico">◈</span>
-                          )}
+                          <ConnectorIcon
+                            icon={c.icon}
+                            name={c.name}
+                            id={c.id}
+                            size={16}
+                          />
                           {c.name}
                         </button>
                       ))}
@@ -589,18 +590,12 @@ export function V3App() {
                   onClick={() => connect({ connector: c })}
                 >
                   <div className="v3-step-ico">
-                    {c.icon ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={c.icon}
-                        alt=""
-                        width={16}
-                        height={16}
-                        style={{ borderRadius: 4 }}
-                      />
-                    ) : (
-                      "◈"
-                    )}
+                    <ConnectorIcon
+                      icon={c.icon}
+                      name={c.name}
+                      id={c.id}
+                      size={18}
+                    />
                   </div>
                   <div className="v3-step-body">
                     <div className="v3-step-title">
@@ -614,7 +609,9 @@ export function V3App() {
               ))}
               {connectors.length === 0 && (
                 <div className="v3-step-ghost">
-                  <div className="v3-step-ico-ghost">◈</div>
+                  <div className="v3-step-ico-ghost">
+                    <WalletMark size={16} />
+                  </div>
                   install MetaMask or Rabby
                 </div>
               )}
