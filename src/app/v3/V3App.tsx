@@ -635,6 +635,14 @@ export function V3App() {
                   install MetaMask or Rabby
                 </div>
               )}
+              <div className="v3-disclaimer">
+                <strong>Before you connect:</strong> PerpID is an indie,
+                unaudited side-project. It&apos;s strictly read-only — it never
+                requests token approvals, sends transactions, or moves funds
+                (at most one message signature to read Paradex). Connect only a
+                wallet you&apos;re comfortable with — if you&apos;re unsure,
+                don&apos;t.
+              </div>
             </>
           )}
 
