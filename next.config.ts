@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Pin the workspace root — a stray lockfile in a parent dir otherwise makes
+  // Next infer the wrong root and emit a warning.
+  turbopack: {
+    root: __dirname,
+  },
 };
 
 export default nextConfig;

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Design source exports (not app code):
+    "PerpID/**",
   ]),
 ]);
 

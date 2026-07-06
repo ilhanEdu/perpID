@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#FAF6EC;color:#16130C;font-family:'Bricolage Grotesque',system-ui,sans-serif;-webkit-font-smoothing:antialiased}</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column">
+
+  <!-- NAV -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:22px 48px;border-bottom:2px solid #16130C">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="background:#16130C;color:#C6F24E;font-weight:800;font-size:22px;padding:4px 12px;border-radius:8px;transform:rotate(-2deg)">PerpID</div>
+      <div style="font-size:13px;font-family:'IBM Plex Mono',monospace;color:#6E6858">your on-chain trading card</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:20px;font-weight:600;font-size:15px">
+      <a href="#leaderboard" style="color:#16130C;text-decoration:none">Leaderboard</a>
+      <div style="border:2px solid #16130C;border-radius:999px;padding:7px 18px;background:#C6F24E;box-shadow:3px 3px 0 #16130C;cursor:pointer">Get your card</div>
+    </div>
+  </div>
+
+  <!-- HERO + SPLIT BUILDER -->
+  <div style="max-width:1120px;width:100%;margin:0 auto;padding:56px 48px 40px;box-sizing:border-box">
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:44px">
+      <h1 style="margin:0;font-size:58px;line-height:1.02;font-weight:800;letter-spacing:-0.02em;max-width:720px">How much have you <span style="background:#C6F24E;padding:0 10px;border-radius:10px;display:inline-block;transform:rotate(-1deg)">really</span> degen'd?</h1>
+      <p style="margin:0;font-size:19px;color:#6E6858;max-width:560px">One wallet signature. Six perp DEXes. Your entire perp history on one shareable card.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:300px 1fr;gap:40px;align-items:start">
+
+      <!-- STEPS -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.1em;color:#6E6858">BUILD YOUR CARD — ANY ORDER</div>
+
+        <sc-if value="{{ hasX }}" hint-placeholder-val="{{ true }}">
+          <div style="border:2px solid #16130C;border-radius:14px;padding:14px 16px;background:#C6F24E;box-shadow:4px 4px 0 #16130C;display:flex;align-items:center;gap:12px">
+            <div style="width:30px;height:30px;border-radius:50%;background:#16130C;color:#C6F24E;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px">✓</div>
+            <div style="display:flex;flex-direction:column">
+              <div style="font-weight:700;font-size:16px">𝕏 connected</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3D3A2E">@degen_dave</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noX }}" hint-placeholder-val="{{ false }}">
+          <div style="border:2px solid #16130C;border-radius:14px;padding:14px 16px;background:#fff;box-shadow:4px 4px 0 #16130C;display:flex;align-items:center;gap:12px;cursor:pointer">
+            <div style="width:30px;height:30px;border-radius:50%;border:2px solid #16130C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px">𝕏</div>
+            <div style="display:flex;flex-direction:column">
+              <div style="font-weight:700;font-size:16px">Connect 𝕏</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E6858">for your pfp + handle</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasWallet }}" hint-placeholder-val="{{ true }}">
+          <div style="border:2px solid #16130C;border-radius:14px;padding:14px 16px;background:#C6F24E;box-shadow:4px 4px 0 #16130C;display:flex;align-items:center;gap:12px">
+            <div style="width:30px;height:30px;border-radius:50%;background:#16130C;color:#C6F24E;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px">✓</div>
+            <div style="display:flex;flex-direction:column">
+              <div style="font-weight:700;font-size:16px">Wallet connected</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3D3A2E">0x7dF3…9aC1 · 6 DEXes scanned</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noWallet }}" hint-placeholder-val="{{ false }}">
+          <div style="border:2px solid #16130C;border-radius:14px;padding:14px 16px;background:#fff;box-shadow:4px 4px 0 #16130C;display:flex;align-items:center;gap:12px;cursor:pointer">
+            <div style="width:30px;height:30px;border-radius:50%;border:2px solid #16130C;display:flex;align-items:center;justify-content:center;font-size:14px">◈</div>
+            <div style="display:flex;flex-direction:column">
+              <div style="font-weight:700;font-size:16px">Connect wallet</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E6858">1 signature → all 6 DEXes</div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasWallet }}" hint-placeholder-val="{{ true }}">
+          <div style="border:2px solid #16130C;border-radius:14px;padding:14px 16px;background:#DCCFF5;box-shadow:4px 4px 0 #16130C;display:flex;align-items:center;gap:12px">
+            <div style="width:30px;height:30px;border-radius:50%;background:#16130C;color:#DCCFF5;display:flex;align-items:center;justify-content:center;font-size:14px">★</div>
+            <div style="display:flex;flex-direction:column">
+              <div style="font-weight:700;font-size:16px">Card ready</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#3D3A2E">rank #417 of 12,408</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noWallet }}" hint-placeholder-val="{{ false }}">
+          <div style="border:2px dashed #B5AE9C;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;color:#B5AE9C">
+            <div style="width:30px;height:30px;border-radius:50%;border:2px dashed #B5AE9C;display:flex;align-items:center;justify-content:center;font-size:14px">★</div>
+            <div style="font-weight:700;font-size:16px">Your card mints itself</div>
+          </div>
+        </sc-if>
+
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E6858;line-height:1.6;margin-top:6px">Read-only. No approvals, no spend permissions — we just read your fills.</div>
+      </div>
+
+      <!-- LIVE CARD -->
+      <div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+        <div ref="{{ cardWrapRef }}" style="width:100%;max-width:660px;height:{{ cardWrapH }}px">
+        <div style="width:660px;height:371px;transform:scale({{ cardScale }});transform-origin:left top;background:radial-gradient(circle at 175px 50%,rgba(198,242,78,0.12),transparent 46%),#16130C;border:3px solid #16130C;border-radius:20px;box-shadow:8px 8px 0 #C6F24E;box-sizing:border-box;color:#FAF6EC;position:relative;overflow:hidden">
+
+          <!-- orbit rings -->
+          <div style="position:absolute;left:85px;top:92px;width:180px;height:180px;border-radius:50%;border:1.5px dashed rgba(250,246,236,0.16)"></div>
+          <div style="position:absolute;left:43px;top:50px;width:264px;height:264px;border-radius:50%;border:1.5px dashed rgba(250,246,236,0.08)"></div>
+          <div style="position:absolute;left:318px;top:22px;font-size:15px;color:rgba(198,242,78,0.7)">✦</div>
+          <div style="position:absolute;left:22px;top:326px;font-size:12px;color:rgba(250,246,236,0.35)">✦</div>
+
+          <!-- avatar core -->
+          <sc-if value="{{ hasX }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;left:127px;top:134px;width:96px;height:96px;border-radius:50%;background:#C6F24E;color:#16130C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:34px;border:3px solid #FAF6EC;box-shadow:0 0 0 8px rgba(198,242,78,0.15)">DD</div>
+          </sc-if>
+          <sc-if value="{{ noX }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;left:127px;top:134px;width:96px;height:96px;border-radius:50%;border:2px dashed #4A4636;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6E6858;text-align:center;box-sizing:border-box">your pfp</div>
+          </sc-if>
+
+          <!-- dex orbit: bubble size = volume on that DEX -->
+          <sc-for list="{{ orbit }}" as="b" hint-placeholder-count="6">
+            <div title="{{ b.name }}" style="position:absolute;left:{{ b.x }}px;top:{{ b.y }}px;width:{{ b.size }}px;height:{{ b.size }}px;border-radius:50%;background:{{ b.bg }};color:{{ b.fg }};border:{{ b.border }};box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;box-shadow:{{ b.glow }}">
+              <span style="font-weight:800;font-size:{{ b.letterPx }}px;line-height:1">{{ b.letter }}</span>
+              <sc-if value="{{ b.showVol }}" hint-placeholder-val="{{ false }}">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600">{{ b.vol }}</span>
+              </sc-if>
+            </div>
+          </sc-for>
+
+          <!-- right panel -->
+          <div style="position:absolute;left:352px;right:24px;top:24px;bottom:20px;display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+              <sc-if value="{{ hasX }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column">
+                  <div style="font-weight:800;font-size:22px;line-height:1.05">Dave</div>
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#B5AE9C">@degen_dave</div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ noX }}" hint-placeholder-val="{{ false }}">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E6858;line-height:1.5;padding-top:2px">← connect 𝕏<br>for your handle</div>
+              </sc-if>
+              <sc-if value="{{ hasWallet }}" hint-placeholder-val="{{ true }}">
+                <div style="background:#C6F24E;color:#16130C;border:2px solid #FAF6EC;border-radius:10px;padding:5px 11px;font-weight:800;font-size:14px;white-space:nowrap;transform:rotate(3deg);box-shadow:3px 3px 0 rgba(250,246,236,0.25)">{{ tierEmoji }} {{ tierLabel }}</div>
+              </sc-if>
+              <sc-if value="{{ noWallet }}" hint-placeholder-val="{{ false }}">
+                <div style="border:2px dashed #4A4636;color:#6E6858;border-radius:10px;padding:5px 11px;font-family:'IBM Plex Mono',monospace;font-size:12px;white-space:nowrap;transform:rotate(3deg)">tier: ??</div>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{ hasWallet }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.12em;color:#B5AE9C">LIFETIME PERP VOLUME</div>
+                <div style="font-weight:800;font-size:44px;line-height:1;letter-spacing:-0.02em;color:#C6F24E">$4.21M</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px">
+                <div style="display:flex;flex-direction:column"><span style="font-weight:700;font-size:17px">1,204</span><span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#B5AE9C">trades</span></div>
+                <div style="display:flex;flex-direction:column"><span style="font-weight:700;font-size:17px">6</span><span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#B5AE9C">DEXes</span></div>
+                <div style="display:flex;flex-direction:column"><span style="font-weight:700;font-size:17px">Mar '22</span><span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#B5AE9C">first trade</span></div>
+                <div style="display:flex;flex-direction:column"><span style="font-weight:700;font-size:17px">#417</span><span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#B5AE9C">rank · top 4%</span></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noWallet }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.12em;color:#6E6858">LIFETIME PERP VOLUME</div>
+                <div style="width:200px;height:40px;border-radius:8px;background:repeating-linear-gradient(45deg,#26221A,#26221A 6px,#1C1912 6px,#1C1912 12px)"></div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E6858">waiting for wallet…</div>
+              </div>
+            </sc-if>
+
+            <div style="margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <div style="font-weight:800;font-size:13px;color:#C6F24E;background:rgba(198,242,78,0.12);padding:2px 8px;border-radius:6px;transform:rotate(-2deg);width:fit-content">PerpID</div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6E6858">perpid.xyz/degen_dave</div>
+              </div>
+              <div style="width:54px;height:54px;border-radius:8px;background:repeating-linear-gradient(45deg,#FAF6EC,#FAF6EC 3px,#D9D2C0 3px,#D9D2C0 6px);border:2px solid #FAF6EC;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#16130C;flex:none">QR</div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <sc-if value="{{ hasWallet }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:12px">
+            <div style="border:2px solid #16130C;border-radius:999px;padding:10px 22px;background:#16130C;color:#FAF6EC;font-weight:700;font-size:15px;box-shadow:3px 3px 0 #C6F24E;cursor:pointer">Share on 𝕏</div>
+            <div style="border:2px solid #16130C;border-radius:999px;padding:10px 22px;background:#fff;font-weight:700;font-size:15px;cursor:pointer">Download PNG</div>
+            <div style="border:2px solid #16130C;border-radius:999px;padding:10px 22px;background:#fff;font-weight:700;font-size:15px;cursor:pointer">Copy link</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ noWallet }}" hint-placeholder-val="{{ false }}">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#6E6858">↑ your card fills in as you connect</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEX STRIP -->
+  <div style="border-top:2px solid #16130C;border-bottom:2px solid #16130C;background:#fff;padding:16px 48px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.1em;color:#6E6858">COUNTS VOLUME FROM</div>
+    <sc-for list="{{ dexes }}" as="dex" hint-placeholder-count="6">
+      <div style="display:flex;align-items:center;gap:8px;border:2px solid #16130C;border-radius:999px;padding:6px 14px;font-weight:700;font-size:14px;background:#FAF6EC">
+        <div style="width:20px;height:20px;border-radius:50%;background:{{ dex.bg }};color:{{ dex.fg }};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px">{{ dex.letter }}</div>
+        {{ dex.name }}
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="leaderboard" style="max-width:1120px;width:100%;margin:0 auto;padding:56px 48px 72px;box-sizing:border-box;display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;align-items:baseline;gap:14px">
+      <h2 style="margin:0;font-size:38px;font-weight:800;letter-spacing:-0.02em">The Degen Leaderboard</h2>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#6E6858">12,408 cards minted · ranked by total volume</div>
+    </div>
+
+    <!-- podium -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:end">
+      <div style="border:2px solid #16130C;border-radius:16px;background:#fff;box-shadow:5px 5px 0 #16130C;padding:18px;display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="font-size:26px">🥈</div>
+        <div style="width:44px;height:44px;border-radius:50%;background:#DCCFF5;border:2px solid #16130C;display:flex;align-items:center;justify-content:center;font-weight:800">S</div>
+        <div style="font-weight:700;font-size:16px">@sizeorlie</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600">$61.2M</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6E6858">🦈 SHARK · 5 DEXes</div>
+      </div>
+      <div style="border:2px solid #16130C;border-radius:16px;background:#C6F24E;box-shadow:5px 5px 0 #16130C;padding:26px 18px;display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="font-size:32px">🥇</div>
+        <div style="width:52px;height:52px;border-radius:50%;background:#16130C;color:#C6F24E;border:2px solid #16130C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px">W</div>
+        <div style="font-weight:800;font-size:18px">@whale_alert</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600">$89.4M</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#3D3A2E">🐋 WHALE · 6 DEXes</div>
+      </div>
+      <div style="border:2px solid #16130C;border-radius:16px;background:#fff;box-shadow:5px 5px 0 #16130C;padding:14px 18px;display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="font-size:24px">🥉</div>
+        <div style="width:40px;height:40px;border-radius:50%;background:#FFD8A8;border:2px solid #16130C;display:flex;align-items:center;justify-content:center;font-weight:800">L</div>
+        <div style="font-weight:700;font-size:16px">@liqhunter</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600">$44.7M</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6E6858">🦈 SHARK · 6 DEXes</div>
+      </div>
+    </div>
+
+    <!-- table -->
+    <div style="border:2px solid #16130C;border-radius:16px;background:#fff;overflow:hidden">
+      <div style="display:grid;grid-template-columns:64px 1fr 130px 110px 120px;padding:12px 20px;border-bottom:2px solid #16130C;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.1em;color:#6E6858;background:#FAF6EC">
+        <div>RANK</div><div>TRADER</div><div style="text-align:right">VOLUME</div><div style="text-align:right">TRADES</div><div style="text-align:right">TIER</div>
+      </div>
+      <sc-for list="{{ rows }}" as="row" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:64px 1fr 130px 110px 120px;padding:12px 20px;border-bottom:1px solid #E8E1D0;align-items:center;font-size:15px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-weight:600">{{ row.rank }}</div>
+          <div style="display:flex;align-items:center;gap:10px;font-weight:700">
+            <div style="width:28px;height:28px;border-radius:50%;background:{{ row.bg }};border:1.5px solid #16130C;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">{{ row.initial }}</div>
+            {{ row.handle }}
+          </div>
+          <div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:600">{{ row.vol }}</div>
+          <div style="text-align:right;font-family:'IBM Plex Mono',monospace;color:#6E6858">{{ row.trades }}</div>
+          <div style="text-align:right">{{ row.tier }}</div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ hasWallet }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:64px 1fr 130px 110px 120px;padding:14px 20px;align-items:center;font-size:15px;background:#C6F24E">
+          <div style="font-family:'IBM Plex Mono',monospace;font-weight:700">417</div>
+          <div style="display:flex;align-items:center;gap:10px;font-weight:800">
+            <div style="width:28px;height:28px;border-radius:50%;background:#16130C;color:#C6F24E;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px">DD</div>
+            @degen_dave <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:400;border:1.5px solid #16130C;border-radius:6px;padding:1px 6px">YOU</span>
+          </div>
+          <div style="text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:700">$4.21M</div>
+          <div style="text-align:right;font-family:'IBM Plex Mono',monospace">1,204</div>
+          <div style="text-align:right">{{ tierEmoji }} {{ tierLabel }}</div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="border-top:2px solid #16130C;padding:20px 48px;display:flex;justify-content:space-between;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#6E6858;margin-top:auto">
+    <div>PerpID — read-only, your keys stay yours</div>
+    <div>data: Hyperliquid · Variational · Aster · Paradex · Lighter · Extended</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280},&quot;state&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;fresh&quot;,&quot;x-connected&quot;,&quot;complete&quot;],&quot;default&quot;:&quot;complete&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demo state&quot;},&quot;tier&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;shrimp&quot;,&quot;fish&quot;,&quot;shark&quot;,&quot;whale&quot;],&quot;default&quot;:&quot;whale&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Demo state&quot;}}">
+class Component extends DCLogic {
+  state = { cardScale: 1 };
+  cardWrapRef = React.createRef();
+  componentDidMount() {
+    this._ro = new ResizeObserver((entries) => {
+      const w = entries[0].contentRect.width;
+      const s = Math.min(1, w / 660);
+      if (Math.abs(s - this.state.cardScale) > 0.004) this.setState({ cardScale: s });
+    });
+    if (this.cardWrapRef.current) this._ro.observe(this.cardWrapRef.current);
+  }
+  componentWillUnmount() { if (this._ro) this._ro.disconnect(); }
+  renderVals() {
+    const state = this.props.state ?? 'complete';
+    const hasX = state !== 'fresh';
+    const hasWallet = state === 'complete';
+    const tiers = {
+      shrimp: { emoji: '🦐', label: 'SHRIMP' },
+      fish:   { emoji: '🐟', label: 'FISH' },
+      shark:  { emoji: '🦈', label: 'SHARK' },
+      whale:  { emoji: '🐋', label: 'WHALE' }
+    };
+    const t = tiers[this.props.tier ?? 'whale'] || tiers.whale;
+    // orbit: bubble size ∝ sqrt(volume share) on that DEX
+    const dexData = [
+      { name: 'Hyperliquid', letter: 'H', bg: '#97FCE4', vol: '$2.0M', share: 0.48, angle: -30 },
+      { name: 'Lighter',     letter: 'L', bg: '#A8D8FF', vol: '$840K', share: 0.20, angle: 210 },
+      { name: 'Paradex',     letter: 'P', bg: '#C6F24E', vol: '$512K', share: 0.12, angle: 90 },
+      { name: 'Aster',       letter: 'A', bg: '#FFD8A8', vol: '$370K', share: 0.09, angle: 150 },
+      { name: 'Variational', letter: 'V', bg: '#DCCFF5', vol: '$290K', share: 0.07, angle: 270 },
+      { name: 'Extended',    letter: 'X', bg: '#FFB3C7', vol: '$180K', share: 0.04, angle: 30 }
+    ];
+    const CX = 175, CY = 182;
+    const orbit = dexData.map(d => {
+      const size = hasWallet ? Math.round(26 + Math.sqrt(d.share) * 60) : 40;
+      const r = hasWallet ? 118 + size * 0.18 : 112;
+      const rad = d.angle * Math.PI / 180;
+      return {
+        name: d.name, letter: d.letter, vol: d.vol, size,
+        x: Math.round(CX + r * Math.cos(rad) - size / 2),
+        y: Math.round(CY + r * Math.sin(rad) - size / 2),
+        bg: hasWallet ? d.bg : '#221E15',
+        fg: hasWallet ? '#16130C' : '#6E6858',
+        border: hasWallet ? '2px solid rgba(250,246,236,0.9)' : '1.5px dashed #4A4636',
+        glow: hasWallet ? '0 0 0 3px rgba(250,246,236,0.12)' : 'none',
+        letterPx: Math.round(size * 0.32),
+        showVol: hasWallet && size >= 50
+      };
+    });
+    return {
+      hasX, hasWallet,
+      noX: !hasX, noWallet: !hasWallet,
+      orbit,
+      cardWrapRef: this.cardWrapRef,
+      cardScale: this.state.cardScale,
+      cardWrapH: Math.round(371 * this.state.cardScale),
+      tierEmoji: t.emoji, tierLabel: t.label,
+      dexes: [
+        { name: 'Hyperliquid', letter: 'H', bg: '#97FCE4', fg: '#16130C' },
+        { name: 'Variational', letter: 'V', bg: '#DCCFF5', fg: '#16130C' },
+        { name: 'Aster',       letter: 'A', bg: '#FFD8A8', fg: '#16130C' },
+        { name: 'Paradex',     letter: 'P', bg: '#C6F24E', fg: '#16130C' },
+        { name: 'Lighter',     letter: 'L', bg: '#A8D8FF', fg: '#16130C' },
+        { name: 'Extended',    letter: 'X', bg: '#FFB3C7', fg: '#16130C' }
+      ],
+      rows: [
+        { rank: 4, handle: '@perpetualloss',  initial: 'P', bg: '#A8D8FF', vol: '$38.1M', trades: '9,882',  tier: '🦈 SHARK' },
+        { rank: 5, handle: '@fundingfarmer',  initial: 'F', bg: '#FFB3C7', vol: '$31.6M', trades: '14,051', tier: '🦈 SHARK' },
+        { rank: 6, handle: '@midcurve_mike',  initial: 'M', bg: '#C6F24E', vol: '$27.9M', trades: '3,204',  tier: '🦈 SHARK' },
+        { rank: 7, handle: '@basisqueen',     initial: 'B', bg: '#DCCFF5', vol: '$22.4M', trades: '7,760',  tier: '🦈 SHARK' },
+        { rank: 8, handle: '@leverage_larry', initial: 'L', bg: '#FFD8A8', vol: '$18.8M', trades: '11,437', tier: '🦈 SHARK' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
