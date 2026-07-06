@@ -126,6 +126,7 @@ export function V3App() {
   // Each connected wallet's individual scan, keyed by lowercase address.
   const perWallet = useRef<Map<string, VolumeResult>>(new Map());
   const [wallets, setWallets] = useState<string[]>([]);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const lastCardHandle = useRef<string | null>(null);
 
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
@@ -188,31 +189,48 @@ export function V3App() {
 
   /** Recompute the combined card + leaderboard row from the given wallets. */
   const syncCardAndBoard = useCallback(
-    async (list: string[]) => {
-      if (!list.length) {
-        setResult(null);
-        setCardId(null);
+    async (list0: string[]) => {
+      let list = list0;
+      // The server rejects wallets already linked to a different X account;
+      // drop each one and retry so the rest of the card still builds.
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (!list.length) {
+          setResult(null);
+          setCardId(null);
+          return;
+        }
+        const results = list
+          .map((a) => perWallet.current.get(a))
+          .filter((r): r is VolumeResult => Boolean(r));
+        setResult(mergeVolumeResults(results, list[0]));
+
+        const shareRes = await fetch("/api/share", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ addresses: list, verified: true }),
+        });
+        const share = await shareRes.json().catch(() => ({}));
+
+        if (shareRes.status === 409 && share.address) {
+          const bad = String(share.address).toLowerCase();
+          perWallet.current.delete(bad);
+          list = [...perWallet.current.keys()];
+          setWallets(list);
+          setLinkError(
+            share.error ?? "That wallet is already linked to another X account.",
+          );
+          continue; // rebuild without the conflicting wallet
+        }
+
+        if (shareRes.ok) setCardId(share.id);
+        await fetch("/api/leaderboard", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ addresses: list, verified: true }),
+        }).catch(() => {});
+        refreshBoard();
         return;
       }
-      const results = list
-        .map((a) => perWallet.current.get(a))
-        .filter((r): r is VolumeResult => Boolean(r));
-      setResult(mergeVolumeResults(results, list[0]));
-
-      const shareRes = await fetch("/api/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ addresses: list, verified: true }),
-      });
-      const share = await shareRes.json();
-      if (shareRes.ok) setCardId(share.id);
-
-      await fetch("/api/leaderboard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ addresses: list, verified: true }),
-      }).catch(() => {});
-      refreshBoard();
     },
     [refreshBoard],
   );
@@ -226,6 +244,7 @@ export function V3App() {
       adding.current.add(lower);
       setStep("scanning");
       setError(null);
+      setLinkError(null);
       try {
         const data = await scanWallet(addr);
         perWallet.current.set(lower, data);
@@ -575,6 +594,7 @@ export function V3App() {
                     </>
                   )}
                 </div>
+                {linkError && <div className="v3-error">{linkError}</div>}
               </div>
               <button className="v3-step-x" onClick={disconnectAll}>
                 disconnect

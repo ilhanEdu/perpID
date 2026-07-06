@@ -43,9 +43,24 @@ create table if not exists leaderboard (
 
 create index if not exists leaderboard_volume_idx on leaderboard (total_volume desc);
 
+-- First X account to link a wallet owns it (anti-abuse). A wallet can never
+-- be re-claimed by a different X account. One X account may own many wallets.
+create table if not exists wallet_links (
+  address text primary key, -- lowercased wallet address
+  x_handle text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists wallet_links_handle_idx on wallet_links (x_handle);
+
 alter table volume_cache enable row level security;
 alter table shares enable row level security;
 alter table leaderboard enable row level security;
+alter table wallet_links enable row level security;
+
+-- Wallet links are public to read; writes go through the service-role key
+-- (which bypasses RLS), so there is intentionally no public write policy.
+create policy "read wallet_links" on wallet_links for select using (true);
 
 -- Shares are public snapshots; anyone may read, the app inserts them.
 create policy "read shares" on shares for select using (true);

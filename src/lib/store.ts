@@ -44,10 +44,12 @@ const g = globalThis as unknown as {
   __popCache?: Map<string, VolumeResult>;
   __popShares?: Map<string, ShareRecord>;
   __popBoard?: Map<string, LeaderboardEntry>;
+  __popLinks?: Map<string, string>;
 };
 const memCache = (g.__popCache ??= new Map<string, VolumeResult>());
 const memShares = (g.__popShares ??= new Map<string, ShareRecord>());
 const memBoard = (g.__popBoard ??= new Map<string, LeaderboardEntry>());
+const memLinks = (g.__popLinks ??= new Map<string, string>());
 
 function cacheKey(address: string, verified: boolean): string {
   return `${address.toLowerCase()}:${verified ? "v" : "u"}`;
@@ -135,24 +137,122 @@ export async function getShare(id: string): Promise<ShareRecord | null> {
   return memShares.get(id) ?? null;
 }
 
+/**
+ * Returns the X handle each of the given wallets is bound to (lowercased
+ * address → handle). Only bound wallets appear in the result. If the
+ * wallet_links table isn't present yet, degrades to the in-memory map.
+ */
+export async function getWalletOwners(
+  addresses: string[],
+): Promise<Map<string, string>> {
+  const lowers = [...new Set(addresses.map((a) => a.toLowerCase()))];
+  const out = new Map<string, string>();
+  if (!lowers.length) return out;
+
+  const db = getSupabase();
+  if (db) {
+    const { data, error } = await db
+      .from("wallet_links")
+      .select("address, x_handle")
+      .in("address", lowers);
+    if (!error && data) {
+      for (const r of data as { address: string; x_handle: string }[]) {
+        out.set(r.address, r.x_handle);
+      }
+      return out;
+    }
+    // Table missing / read error — fall through to memory (no hard failure).
+    if (error) console.warn(`[store] wallet_links read failed: ${error.message}`);
+  }
+  for (const a of lowers) {
+    const h = memLinks.get(a);
+    if (h) out.set(a, h);
+  }
+  return out;
+}
+
+/** Binds any not-yet-linked wallets to a handle (first-come; never overwrites). */
+export async function bindWallets(
+  addresses: string[],
+  handle: string,
+): Promise<void> {
+  const lowers = [...new Set(addresses.map((a) => a.toLowerCase()))];
+  if (!lowers.length || !handle) return;
+
+  const db = getSupabase();
+  if (db) {
+    const rows = lowers.map((address) => ({ address, x_handle: handle }));
+    // ignoreDuplicates → keep the existing owner for already-linked wallets.
+    const { error } = await db
+      .from("wallet_links")
+      .upsert(rows, { onConflict: "address", ignoreDuplicates: true });
+    if (!error) return;
+    console.warn(`[store] wallet_links write failed: ${error.message}`);
+  }
+  for (const a of lowers) if (!memLinks.has(a)) memLinks.set(a, handle);
+}
+
+/**
+ * Enforces the one-wallet ↔ one-X-account rule. If any wallet is already
+ * linked to a *different* handle, returns that conflict (and binds nothing);
+ * otherwise binds the caller's newly-linked wallets and returns no conflict.
+ */
+export async function claimWallets(
+  addresses: string[],
+  handle: string,
+): Promise<{ conflict?: { address: string; owner: string } }> {
+  if (!handle) return {};
+  const owners = await getWalletOwners(addresses);
+  for (const [address, owner] of owners) {
+    if (owner.toLowerCase() !== handle.toLowerCase()) {
+      return { conflict: { address, owner } };
+    }
+  }
+  await bindWallets(addresses, handle);
+  return {};
+}
+
 export async function upsertLeaderboard(
   entry: Omit<LeaderboardEntry, "updated_at">,
 ): Promise<void> {
+  const address = entry.address.toLowerCase();
   const record: LeaderboardEntry = {
     ...entry,
-    address: entry.address.toLowerCase(),
+    address,
     updated_at: new Date().toISOString(),
   };
 
   const db = getSupabase();
   if (db) {
+    // Never let a submission without an X profile wipe an existing owner's
+    // identity — keep the linked handle/name/avatar, only refresh the numbers.
+    if (!record.x_handle) {
+      const { data } = await db
+        .from("leaderboard")
+        .select("x_handle, x_name, x_avatar")
+        .eq("address", address)
+        .maybeSingle();
+      if (data?.x_handle) {
+        record.x_handle = data.x_handle;
+        record.x_name = data.x_name;
+        record.x_avatar = data.x_avatar;
+      }
+    }
     const { error } = await db
       .from("leaderboard")
       .upsert(record, { onConflict: "address" });
     if (!error) return;
     console.warn(`[store] leaderboard upsert failed: ${error.message}`);
   }
-  memBoard.set(record.address, record);
+  if (!record.x_handle) {
+    const existing = memBoard.get(address);
+    if (existing?.x_handle) {
+      record.x_handle = existing.x_handle;
+      record.x_name = existing.x_name;
+      record.x_avatar = existing.x_avatar;
+    }
+  }
+  memBoard.set(address, record);
 }
 
 export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {

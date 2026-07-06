@@ -6,7 +6,8 @@ import {
 } from "@/lib/dex";
 import { computeScore } from "@/lib/score";
 import { tierForVolume } from "@/lib/tiers";
-import { getLeaderboard, upsertLeaderboard } from "@/lib/store";
+import { claimWallets, getLeaderboard, upsertLeaderboard } from "@/lib/store";
+import { shortAddress } from "@/lib/ranks";
 import { getXProfile } from "@/lib/x";
 
 export const runtime = "nodejs";
@@ -37,13 +38,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid address" }, { status: 400 });
   }
 
+  const x = await getXProfile();
+
+  // Enforce one-wallet ↔ one-X-account before recording anything.
+  if (x?.handle) {
+    const { conflict } = await claimWallets(addresses, x.handle);
+    if (conflict) {
+      return NextResponse.json(
+        {
+          error: `Wallet ${shortAddress(conflict.address)} is already linked to @${conflict.owner}`,
+          address: conflict.address,
+          owner: conflict.owner,
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   const result = await aggregateAddresses(addresses, {
     verified: Boolean(body.verified),
   });
 
   const score =
     result.score ?? computeScore(result.breakdown, result.totalVolumeUsd);
-  const x = await getXProfile();
 
   await upsertLeaderboard({
     address: result.address,
