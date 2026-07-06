@@ -1,96 +1,173 @@
-# Poplytics — Are you worthy of the PopDEX beta?
+<div align="center">
+  <img src="public/appicon.png" alt="PerpID" width="88" height="88" />
 
-Check your all-time perpetuals trading volume across major perp DEXs, earn a
-Marvel-inspired hero rank (Recruit → Thor LVL 3), and share a snapshot card
-with OpenGraph previews for Twitter/Discord. Cross **$69K** all-time volume
-and you're WORTHY — PopDEX beta access unlocked.
+  <h1>PerpID</h1>
 
-## Hero ladder
+  <p><strong>Your on-chain trading card.</strong> Connect X + wallet, and PerpID reads your lifetime
+  perpetuals volume across the top perp DEXes into one verified, shareable trading card — plus a public leaderboard.</p>
 
-| All-time volume | Hero | Worthy |
+  <p>
+    <a href="https://perpid.vercel.app"><b>Live app →</b></a>
+  </p>
+
+  <sub>Next.js 16 · React 19 · TypeScript · wagmi · Supabase · <code>next/og</code></sub>
+</div>
+
+---
+
+## What it is
+
+GitHub is for devs. LinkedIn is for suits. **PerpID is for traders.**
+
+It aggregates your on-chain perp activity into a single **Trader Score** and a holographic,
+tier-themed card you can download or share. Everything is **read-only** — no approvals, no
+transactions, no custody. The only optional interaction is a single message signature to unlock
+private venues (Paradex).
+
+## Features
+
+- **One card, four DEXes** — lifetime volume from Hyperliquid, GMX, dYdX, and Paradex, merged into one score.
+- **One-signature unlock** — Paradex volume is fetched via a StarkKey derived from a single EIP-712 signature; no keys ever leave the browser.
+- **Multi-wallet** — connect several wallets (injected or WalletConnect); their volume stacks onto the same card.
+- **Holographic foil card** — tier-driven accents (🦐 → 🐟 → 🦈 → 🐋), a subtle foil texture, a real QR code, and an interactive 3D tilt. The downloadable/OG PNG is rendered server-side with [`next/og`](https://nextjs.org/docs/app/api-reference/functions/image-response) so it matches the live card pixel-for-pixel.
+- **Public leaderboard** — ranked by total volume, personalized with your X handle + avatar.
+- **Anti-abuse ownership** — the first X account to link a wallet owns it; no other account can claim it.
+- **"Sign in with X"** — native OAuth 2.0 (PKCE), with graceful fallbacks.
+
+## How it works
+
+### Data sources
+
+All volume is read from public or wallet-authorized APIs — PerpID never asks for exchange API keys it can't justify.
+
+| DEX | Source | Notes |
 | --- | --- | --- |
-| $1M+ | Thor · LVL 3 | ⚡ |
-| $500K+ | Thor · LVL 2 | ⚡ |
-| $69K+ | Thor · LVL 1 | ⚡ |
-| $50K+ | Iron Man | — |
-| $20K+ | Black Widow | — |
-| $1K+ | Hawkeye | — |
-| < $1K | Recruit | — |
+| **Hyperliquid** | Public `POST /info` portfolio endpoint | Lifetime volume, wallet age, active days |
+| **GMX** | Public GMX Synthetics subgraph (Arbitrum) | On-chain, keyed by account |
+| **dYdX v4** | Public indexer (`affiliates/total_volume`) | Requires a `dydx1…` address (no EVM mapping) |
+| **Paradex** | Private fills API | Unlocked by one wallet signature → short-lived JWT |
 
-Edit the ladder in `src/lib/heroes.ts` (names, thresholds, colors — one
-place). Avatar images go in `public/heroes/{slug}.png` (thor-1, thor-2,
-thor-3, iron-man, black-widow, hawkeye, recruit); missing images fall back
-to emoji automatically.
+### Trader Score & tiers
 
-## Verified vs Unverified cards
+A pure, isomorphic scoring engine ([`src/lib/score.ts`](src/lib/score.ts)) weights volume, trading days,
+wallet age, protocol coverage, consistency, and diversity into a `0–100` score. Volume tiers:
 
-- **Pasted address** → card is stamped `UNVERIFIED`.
-- **Connected wallet** (lookup of your own address) → `✓ VERIFIED`.
+| Tier | Threshold |
+| --- | --- |
+| 🦐 SHRIMP | `< $100K` |
+| 🐟 FISH | `< $10M` |
+| 🦈 SHARK | `< $75M` |
+| 🐋 WHALE | `≥ $75M` |
 
-The flag flows through the API, the 24h cache (cached separately), the share
-snapshot, and the OG image.
+### Request flow
 
-## Quick start
+```
+connect wallet ──> /api/volume        (public scan, cached 24h)
+               └─> /api/volume/private (optional: Paradex JWT / dYdX address, merged additively)
+generate card ──> /api/share          (snapshot → /share/{id}, OG image)
+               └─> /api/leaderboard    (upsert, enforces wallet ↔ X ownership)
+download PNG  ──> /api/card/{id}       (next/og render)
+```
+
+## Tech stack
+
+- **Framework** — [Next.js 16](https://nextjs.org) (App Router, Turbopack), React 19, TypeScript
+- **Wallet** — [wagmi](https://wagmi.sh) + [viem](https://viem.sh), WalletConnect, injected (EIP-6963)
+- **Data** — [Supabase](https://supabase.com) (Postgres + RLS) with an in-memory fallback for local dev
+- **Card rendering** — [`next/og`](https://vercel.com/docs/functions/og-image-generation) (Satori) + [`qrcode`](https://www.npmjs.com/package/qrcode)
+- **Exchange SDKs** — [`@paradex/sdk`](https://github.com/tradeparadex), `lighter-ts-sdk`
+- **Hosting** — Vercel
+
+## Project structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                # entry — renders the card builder + leaderboard
+│   ├── layout.tsx              # root layout, metadata, fonts
+│   ├── v3/                     # V3App, V3Card + styles (the live app UI)
+│   ├── share/[id]/             # public share page + OG image
+│   └── api/
+│       ├── volume/             # public scan + private (signature/address) merge
+│       ├── share/              # snapshot a card
+│       ├── leaderboard/        # ranked board + ownership enforcement
+│       ├── card/[id]/          # downloadable PNG (next/og)
+│       └── x/                  # OAuth 2.0 login / callback / session / profile
+├── components/                 # WalletIcons, Icons, Logo, …
+└── lib/
+    ├── dex/                    # per-DEX fetchers + multi-wallet merge
+    ├── score.ts · tiers.ts     # Trader Score + tier logic
+    ├── cardTheme.ts            # shared card theme (live + OG parity)
+    ├── og-card.tsx             # Satori card renderer
+    ├── store.ts                # Supabase data layer (cache, shares, board, links)
+    └── paradex.ts · wagmi.ts   # signature unlock + wallet config
+supabase/schema.sql             # tables, indexes, RLS policies
+```
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 20+
+- npm
+- (Optional) A [Supabase](https://supabase.com) project, an [X developer app](https://developer.x.com), and a [WalletConnect](https://cloud.reown.com) project — the app degrades gracefully without them.
+
+### Run locally
 
 ```bash
+git clone https://github.com/ilhanEdu/perpID.git
+cd perpID
 npm install
-npm run dev
+cp .env.example .env.local   # fill in what you have (all optional)
+npm run dev                  # http://localhost:3000
 ```
 
-Works out of the box with no configuration — caching and share links fall
-back to in-memory storage. For persistence, configure Supabase (below).
+The app runs with **zero config** (in-memory storage, injected wallets, manual X handle entry). Each service below unlocks a better experience — see **[SETUP.md](SETUP.md)** for the full walkthrough (Supabase schema, X OAuth, WalletConnect, Vercel).
 
-## How lookups work
+### Environment variables
 
-| DEX | Method | Status |
-| --- | --- | --- |
-| Hyperliquid | Public `portfolio` info endpoint (`allTime.vlm`) | ✅ Live |
-| dYdX v4 | Public indexer `affiliates/total_volume` (requires `dydx1...` address) | ✅ Live |
-| Lighter | Public L1-address → account mapping; volume needs auth | 🟡 Account detection only |
-| Paradex | Private API — JWT from wallet signature (`/api/volume/private`) | 🟠 Endpoint wired, auth flow pending |
-| EdgeX | Private API | 🔜 Placeholder |
-| Variational | Private API | 🔜 Placeholder |
+| Variable | Required | Purpose |
+| --- | :---: | --- |
+| `NEXT_PUBLIC_APP_URL` | rec. | Canonical URL for OG images, share links, QR codes |
+| `NEXT_PUBLIC_SUPABASE_URL` | rec. | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | rec. | Supabase publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | rec. | Server-side writes (bypasses RLS) — **secret** |
+| `X_CLIENT_ID` / `X_CLIENT_SECRET` | opt. | Native "Connect X" OAuth 2.0 |
+| `NEXT_PUBLIC_WC_PROJECT_ID` | opt. | Enables WalletConnect |
 
-- **Paste an address** → covers the public-API DEXs.
-- **Connect wallet** → auto-looks-up your address; private-API DEXs surface
-  as "Auth needed" until their signature flows are completed in
-  `src/lib/dex/private.ts` and `/api/volume/private`.
+`NEXT_PUBLIC_*` values are public by design; `SUPABASE_SERVICE_ROLE_KEY` and `X_CLIENT_SECRET` are server-only and must never be committed.
 
-## Configuration
-
-`.env.local` is already wired to the Supabase project with the publishable
-key. **Run `supabase/schema.sql` in the Supabase SQL editor once** — until
-then the app logs a warning and falls back to in-memory storage (share links
-won't survive restarts).
-
-Optional:
-
-- `SUPABASE_SERVICE_ROLE_KEY` — lets you drop the anon write policies from
-  the schema.
-- `NEXT_PUBLIC_WC_PROJECT_ID` — enables WalletConnect (injected wallets like
-  MetaMask work without it).
-
-## Architecture
-
-- `src/lib/dex/` — one adapter per DEX, each returning a normalized
-  `DexVolume` (`ok | no_account | auth_required | unsupported | error`).
-  `aggregateVolume()` fans out in parallel and sums confirmed volume.
-- `src/lib/store.ts` — Supabase-backed cache + share store with an
-  in-memory fallback (kept on `globalThis` so all route bundles share it).
-- `src/app/api/volume` — public lookup (24h cache, `?fresh=1` to bypass).
-- `src/app/api/volume/private` — accepts exchange JWTs obtained client-side
-  from wallet signatures; merges private volume into the aggregate.
-- `src/app/api/share` — snapshots a result, returns `/share/{id}`.
-- `src/app/share/[id]` — server-rendered card page with OG meta tags and a
-  generated `opengraph-image` (1200×630) for social previews.
-
-## Verifying
+### Scripts
 
 ```bash
-npm run build && npm start
-curl "http://localhost:3000/api/volume?address=0x31ca8395cf837de08b24da3f660e77761dfb974b"
+npm run dev     # dev server
+npm run build   # production build
+npm run start   # serve the production build
+npm run lint    # eslint
 ```
 
-That address is a known Hyperliquid whale (~$187B all-time volume) and should
-return tier "Leviathan". Manual wallet testing: connect MetaMask on the
-landing page — the lookup fires automatically with your address.
+## Deployment
+
+Deployed on **Vercel**. Import the repo, add the environment variables above (Production scope), set
+`NEXT_PUBLIC_APP_URL` to your domain, and register `https://<domain>/api/x/callback` in your X app.
+Apply [`supabase/schema.sql`](supabase/schema.sql) in the Supabase SQL editor to enable persistence.
+
+## Security & privacy
+
+- **Read-only.** PerpID never requests token approvals, sends transactions, or moves funds.
+- **No key custody.** The Paradex unlock derives a StarkKey from one signature client-side; only a short-lived JWT reaches the server, and it is never stored.
+- **Minimal identity.** Only your X `handle`, `name`, and `avatar` are kept (in an httpOnly cookie) to personalize the card.
+- **Ownership binding.** A wallet can be linked to exactly one X account (first-come), enforced server-side.
+
+> ⚠️ **Disclaimer.** PerpID is an indie, unaudited side-project. It is read-only and designed to be safe,
+> but it has not undergone a formal security review. Connect only a wallet you're comfortable with.
+
+## Roadmap
+
+- [ ] Signature proof-of-ownership on wallet link (beyond first-come binding)
+- [ ] Additional venues as public wallet-keyed APIs become available
+- [ ] Solana perps (Drift, Jupiter) once address mapping is solved
+
+## License
+
+MIT
