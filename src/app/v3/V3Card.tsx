@@ -65,8 +65,38 @@ export function V3Card({
   shareUrl: string | null;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const tiltRef = useRef<HTMLDivElement>(null);
+  const glareRef = useRef<HTMLDivElement>(null);
+  const canTilt = useRef(false);
   const [scale, setScale] = useState(1);
   const [qr, setQr] = useState<string | null>(null);
+
+  // Interactive 3D tilt (fine pointers only; respects reduced-motion).
+  useEffect(() => {
+    canTilt.current =
+      window.matchMedia("(pointer: fine)").matches &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+
+  function handleTilt(e: React.PointerEvent<HTMLDivElement>) {
+    if (!canTilt.current || !wrapRef.current || !tiltRef.current) return;
+    const r = wrapRef.current.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    const ry = (px - 0.5) * 16;
+    const rx = (0.5 - py) * 12;
+    tiltRef.current.style.transform = `rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) scale(1.02)`;
+    if (glareRef.current) {
+      glareRef.current.style.opacity = "1";
+      glareRef.current.style.background = `radial-gradient(circle at ${(px * 100).toFixed(1)}% ${(py * 100).toFixed(1)}%, rgba(255,255,255,0.4), rgba(255,255,255,0) 45%)`;
+    }
+  }
+
+  function resetTilt() {
+    if (tiltRef.current)
+      tiltRef.current.style.transform = "rotateX(0deg) rotateY(0deg) scale(1)";
+    if (glareRef.current) glareRef.current.style.opacity = "0";
+  }
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -115,7 +145,6 @@ export function V3Card({
 
   const theme = tier ? cardTheme(tier) : NEUTRAL_THEME;
   const cardVars = {
-    transform: `scale(${scale})`,
     "--accent": theme.accent,
     "--accent-soft": theme.accentSoft,
     "--accent-glow": theme.glow,
@@ -140,11 +169,19 @@ export function V3Card({
     });
 
   return (
-    <div ref={wrapRef} className="v3-card-wrap" style={{ height: Math.round(371 * scale) }}>
-      <div className="v3-card" style={cardVars}>
-        {/* foil texture + edge */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="v3-card-texture" src="/card-foil.png" alt="" />
+    <div
+      ref={wrapRef}
+      className="v3-card-wrap"
+      style={{ height: Math.round(371 * scale) }}
+      onPointerMove={handleTilt}
+      onPointerLeave={resetTilt}
+    >
+      <div className="v3-card-scale" style={{ transform: `scale(${scale})` }}>
+        <div ref={tiltRef} className="v3-card" style={cardVars}>
+          <div ref={glareRef} className="v3-glare" />
+          {/* foil texture + edge */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="v3-card-texture" src="/card-foil.png" alt="" />
         <div className="v3-foil-edge" />
 
         {/* orbit rings */}
@@ -286,6 +323,7 @@ export function V3Card({
               ) : null}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>

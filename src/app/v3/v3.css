@@ -574,6 +574,25 @@
 .v3-card-wrap {
   width: 100%;
   max-width: 660px;
+  perspective: 1200px;
+}
+
+.v3-card-scale {
+  width: 660px;
+  height: 371px;
+  transform-origin: left top;
+}
+
+/* Cursor-following specular glare for the 3D-tilt effect (live card only). */
+.v3-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  mix-blend-mode: screen;
+  transition: opacity 0.25s ease;
 }
 
 .v3-card {
@@ -583,7 +602,9 @@
   --foil: linear-gradient(110deg, #e4fba8, var(--lime), #b6e84a);
   width: 660px;
   height: 371px;
-  transform-origin: left top;
+  transform-origin: center center;
+  transition: transform 0.14s ease-out;
+  will-change: transform;
   background:
     radial-gradient(circle at 16% 10%, rgba(250, 246, 236, 0.07), transparent 42%),
     radial-gradient(circle at 26% 49%, var(--accent-soft), transparent 46%),
