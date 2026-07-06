@@ -4,7 +4,7 @@ import {
   isValidAddress,
   parseAddressList,
 } from "@/lib/dex";
-import { claimWallets, createShare } from "@/lib/store";
+import { claimWallets, createShare, getWalletsForHandle } from "@/lib/store";
 import { getXProfile } from "@/lib/x";
 import { shortAddress } from "@/lib/ranks";
 
@@ -34,6 +34,10 @@ export async function POST(req: NextRequest) {
   // Personalize the card with the connected X profile, if any.
   const profile = await getXProfile();
 
+  // The wallets to score. With an X account connected, the card mirrors the
+  // leaderboard: cumulative across every wallet the account has ever linked.
+  let scanAddresses = addresses;
+
   // Enforce one-wallet ↔ one-X-account: a wallet already linked to a
   // different X account can't be claimed here.
   if (profile?.handle) {
@@ -48,9 +52,13 @@ export async function POST(req: NextRequest) {
         { status: 409 },
       );
     }
+    const owned = await getWalletsForHandle(profile.handle);
+    // Dedupe case-insensitively, preferring the submitted form of each wallet.
+    const seen = new Set(addresses.map((a) => a.toLowerCase()));
+    scanAddresses = [...addresses, ...owned.filter((a) => !seen.has(a.toLowerCase()))];
   }
 
-  const result = await aggregateAddresses(addresses, { verified });
+  const result = await aggregateAddresses(scanAddresses, { verified });
 
   try {
     const share = await createShare(result, profile);

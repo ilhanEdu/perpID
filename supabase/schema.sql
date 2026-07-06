@@ -29,7 +29,11 @@ alter table shares add column if not exists x_handle text;
 alter table shares add column if not exists x_name text;
 alter table shares add column if not exists x_avatar text;
 
--- One row per wallet; upserted whenever someone generates their card.
+-- One row per identity, upserted whenever someone generates their card. The
+-- row is keyed by a wallet address, but a connected X account owns a single
+-- row: its volume is the cumulative sum across every wallet it has linked, and
+-- upsertLeaderboard removes any sibling rows the account held under another
+-- wallet. Anonymous (no X) rows remain one-per-wallet.
 create table if not exists leaderboard (
   address text primary key, -- lowercased wallet address
   total_volume numeric not null default 0,
@@ -42,6 +46,16 @@ create table if not exists leaderboard (
 );
 
 create index if not exists leaderboard_volume_idx on leaderboard (total_volume desc);
+create index if not exists leaderboard_handle_idx on leaderboard (lower(x_handle));
+
+-- One-off cleanup for boards that accumulated duplicate rows per X account
+-- before the one-identity-per-account rule (keeps each handle's largest row):
+delete from leaderboard a
+using leaderboard b
+where a.x_handle is not null
+  and lower(a.x_handle) = lower(b.x_handle)
+  and (a.total_volume < b.total_volume
+       or (a.total_volume = b.total_volume and a.address > b.address));
 
 -- First X account to link a wallet owns it (anti-abuse). A wallet can never
 -- be re-claimed by a different X account. One X account may own many wallets.

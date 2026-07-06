@@ -171,6 +171,29 @@ export async function getWalletOwners(
   return out;
 }
 
+/** Every wallet address (lowercased) that the given X handle has linked. */
+export async function getWalletsForHandle(handle: string): Promise<string[]> {
+  if (!handle) return [];
+  const db = getSupabase();
+  if (db) {
+    const { data, error } = await db
+      .from("wallet_links")
+      .select("address")
+      .ilike("x_handle", handle);
+    if (!error && data) {
+      return (data as { address: string }[]).map((r) => r.address);
+    }
+    if (error)
+      console.warn(`[store] wallet_links by handle read failed: ${error.message}`);
+  }
+  const out: string[] = [];
+  const target = handle.toLowerCase();
+  for (const [address, h] of memLinks) {
+    if (h.toLowerCase() === target) out.push(address);
+  }
+  return out;
+}
+
 /** Binds any not-yet-linked wallets to a handle (first-come; never overwrites). */
 export async function bindWallets(
   addresses: string[],
@@ -224,9 +247,20 @@ export async function upsertLeaderboard(
 
   const db = getSupabase();
   if (db) {
-    // Never let a submission without an X profile wipe an existing owner's
-    // identity — keep the linked handle/name/avatar, only refresh the numbers.
-    if (!record.x_handle) {
+    if (record.x_handle) {
+      // One identity per X account: an account can link several wallets, but
+      // owns a single leaderboard row. Drop any rows this handle previously
+      // held under a different wallet so its cumulative row is the only one.
+      const { error: delErr } = await db
+        .from("leaderboard")
+        .delete()
+        .ilike("x_handle", record.x_handle)
+        .neq("address", address);
+      if (delErr)
+        console.warn(`[store] leaderboard dedupe failed: ${delErr.message}`);
+    } else {
+      // Never let a submission without an X profile wipe an existing owner's
+      // identity — keep the linked handle/name/avatar, only refresh the numbers.
       const { data } = await db
         .from("leaderboard")
         .select("x_handle, x_name, x_avatar")
@@ -244,7 +278,14 @@ export async function upsertLeaderboard(
     if (!error) return;
     console.warn(`[store] leaderboard upsert failed: ${error.message}`);
   }
-  if (!record.x_handle) {
+  if (record.x_handle) {
+    const target = record.x_handle.toLowerCase();
+    for (const [addr, e] of memBoard) {
+      if (addr !== address && e.x_handle?.toLowerCase() === target) {
+        memBoard.delete(addr);
+      }
+    }
+  } else {
     const existing = memBoard.get(address);
     if (existing?.x_handle) {
       record.x_handle = existing.x_handle;
@@ -255,20 +296,45 @@ export async function upsertLeaderboard(
   memBoard.set(address, record);
 }
 
+/**
+ * Collapses rows that belong to the same X account into one, keeping the
+ * highest-volume row per handle. A single X user can link several wallets
+ * (each its own address-keyed row), but should appear on the board only once.
+ * Rows without an X handle stay distinct (keyed by address). Input must be
+ * pre-sorted by total_volume descending so the first row seen per handle wins.
+ */
+function dedupeByHandle(entries: LeaderboardEntry[]): LeaderboardEntry[] {
+  const seen = new Set<string>();
+  const out: LeaderboardEntry[] = [];
+  for (const entry of entries) {
+    const handle = entry.x_handle?.toLowerCase();
+    if (handle) {
+      if (seen.has(handle)) continue;
+      seen.add(handle);
+    }
+    out.push(entry);
+  }
+  return out;
+}
+
 export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
   const db = getSupabase();
   if (db) {
+    // Over-fetch so dedupe by handle still leaves a full page of `limit` rows.
     const { data, error } = await db
       .from("leaderboard")
       .select("*")
       .order("total_volume", { ascending: false })
-      .limit(limit);
-    if (!error && data) return data as LeaderboardEntry[];
+      .limit(limit * 4);
+    if (!error && data) {
+      return dedupeByHandle(data as LeaderboardEntry[]).slice(0, limit);
+    }
     if (error) console.warn(`[store] leaderboard read failed: ${error.message}`);
   }
-  return [...memBoard.values()]
-    .sort((a, b) => b.total_volume - a.total_volume)
-    .slice(0, limit);
+  const sorted = [...memBoard.values()].sort(
+    (a, b) => b.total_volume - a.total_volume,
+  );
+  return dedupeByHandle(sorted).slice(0, limit);
 }
 
 export function shareToResult(share: ShareRecord): {

@@ -397,10 +397,15 @@ export function V3App() {
   }, [wallets, step, xProfile, syncCardAndBoard]);
 
   // ---- Derived ----
-  const primary = wallets[0] ?? null;
-  const myIndex = primary
-    ? board.findIndex((e) => e.address === primary)
-    : -1;
+  // Locate your row by X handle first (your one identity spans every wallet),
+  // then fall back to any connected wallet address for the anonymous case.
+  const myHandle = xProfile?.handle?.toLowerCase() ?? null;
+  const walletSet = new Set(wallets.map((w) => w.toLowerCase()));
+  const myIndex = board.findIndex((e) =>
+    myHandle && e.x_handle
+      ? e.x_handle.toLowerCase() === myHandle
+      : walletSet.has(e.address.toLowerCase()),
+  );
   const boardRank = myIndex >= 0 ? myIndex + 1 : null;
 
   const shareUrl = cardId ? shareLink(cardId) : null;

@@ -6,7 +6,12 @@ import {
 } from "@/lib/dex";
 import { computeScore } from "@/lib/score";
 import { tierForVolume } from "@/lib/tiers";
-import { claimWallets, getLeaderboard, upsertLeaderboard } from "@/lib/store";
+import {
+  claimWallets,
+  getLeaderboard,
+  getWalletsForHandle,
+  upsertLeaderboard,
+} from "@/lib/store";
 import { shortAddress } from "@/lib/ranks";
 import { getXProfile } from "@/lib/x";
 
@@ -40,6 +45,12 @@ export async function POST(req: NextRequest) {
 
   const x = await getXProfile();
 
+  // The wallets to score. When an X account is connected we score the union of
+  // every wallet it has ever linked (not just this submission) so the row is
+  // cumulative across the trader's whole wallet set, regardless of how many
+  // they reconnected this session.
+  let scanAddresses = addresses;
+
   // Enforce one-wallet ↔ one-X-account before recording anything.
   if (x?.handle) {
     const { conflict } = await claimWallets(addresses, x.handle);
@@ -53,9 +64,13 @@ export async function POST(req: NextRequest) {
         { status: 409 },
       );
     }
+    const owned = await getWalletsForHandle(x.handle);
+    // Dedupe case-insensitively, preferring the submitted form of each wallet.
+    const seen = new Set(addresses.map((a) => a.toLowerCase()));
+    scanAddresses = [...addresses, ...owned.filter((a) => !seen.has(a.toLowerCase()))];
   }
 
-  const result = await aggregateAddresses(addresses, {
+  const result = await aggregateAddresses(scanAddresses, {
     verified: Boolean(body.verified),
   });
 
