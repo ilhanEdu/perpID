@@ -330,8 +330,19 @@ export function V3App() {
     setDydxBusy(false);
   }
 
-  /** Prompt the wallet to authorize another account (adds it on switch). */
-  async function addAnotherWallet() {
+  // "+ add another wallet" opens a picker of every available connector
+  // (installed browser wallets via EIP-6963 + WalletConnect when configured).
+  const [addOpen, setAddOpen] = useState(false);
+
+  /** Connect a chosen wallet; its account is auto-scanned and stacked in. */
+  function addViaConnector(c: (typeof connectors)[number]) {
+    setAddOpen(false);
+    connect({ connector: c });
+  }
+
+  /** Same wallet, different account — prompt the extension's account picker. */
+  async function switchAccountInWallet() {
+    setAddOpen(false);
     try {
       const provider = (await connector?.getProvider?.()) as
         | { request?: (a: { method: string; params?: unknown[] }) => Promise<unknown> }
@@ -506,18 +517,62 @@ export function V3App() {
                   </div>
                 )}
                 <div className="v3-wallet-actions">
-                  <button
-                    type="button"
-                    className="v3-wallet-add"
-                    disabled={isPending || step === "scanning" || step === "signing"}
-                    onClick={addAnotherWallet}
-                  >
-                    + add another wallet
-                  </button>
-                  <span className="v3-wallet-hint">
-                    trade on more than one wallet? switch accounts in your wallet
-                    to stack them
-                  </span>
+                  {addOpen ? (
+                    <div className="v3-wallet-picker">
+                      <div className="v3-wallet-picker-label">
+                        connect another wallet
+                      </div>
+                      {connectors.map((c) => (
+                        <button
+                          key={c.uid}
+                          type="button"
+                          className="v3-wallet-pick"
+                          disabled={isPending}
+                          onClick={() => addViaConnector(c)}
+                        >
+                          {c.icon ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={c.icon} alt="" width={16} height={16} />
+                          ) : (
+                            <span className="v3-wallet-pick-ico">◈</span>
+                          )}
+                          {c.name}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="v3-wallet-pick"
+                        onClick={() => void switchAccountInWallet()}
+                      >
+                        <span className="v3-wallet-pick-ico">⇄</span>
+                        switch account in current wallet
+                      </button>
+                      <button
+                        type="button"
+                        className="v3-ext-cancel"
+                        onClick={() => setAddOpen(false)}
+                      >
+                        cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="v3-wallet-add"
+                        disabled={
+                          isPending || step === "scanning" || step === "signing"
+                        }
+                        onClick={() => setAddOpen(true)}
+                      >
+                        + add another wallet
+                      </button>
+                      <span className="v3-wallet-hint">
+                        connect a different wallet (or switch accounts) to stack
+                        their volume
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
               <button className="v3-step-x" onClick={disconnectAll}>

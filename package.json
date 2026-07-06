@@ -12,6 +12,7 @@
     "@paradex/sdk": "^0.8.1",
     "@supabase/supabase-js": "^2.110.0",
     "@tanstack/react-query": "^5.101.2",
+    "@walletconnect/ethereum-provider": "^2.23.10",
     "lighter-ts-sdk": "^1.0.12",
     "next": "16.2.10",
     "qrcode": "^1.5.4",

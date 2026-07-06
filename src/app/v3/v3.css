@@ -366,6 +366,58 @@
   cursor: default;
 }
 
+.v3-wallet-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  border: 1.5px solid var(--ink);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+}
+
+.v3-wallet-picker-label {
+  font-family: var(--font-plex), monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.v3-wallet-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 1.5px solid var(--ink);
+  background: var(--cream);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.v3-wallet-pick:hover {
+  background: var(--lime);
+}
+
+.v3-wallet-pick:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.v3-wallet-pick img {
+  border-radius: 4px;
+}
+
+.v3-wallet-pick-ico {
+  width: 16px;
+  text-align: center;
+}
+
 .v3-wallet-hint {
   font-family: var(--font-plex), monospace;
   font-size: 10.5px;
