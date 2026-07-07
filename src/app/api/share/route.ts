@@ -6,6 +6,8 @@ import {
 } from "@/lib/dex";
 import { claimWallets, createShare, getWalletsForHandle } from "@/lib/store";
 import { getXProfile } from "@/lib/x";
+import { getVerifiedWallets } from "@/lib/walletAuth";
+import { rateLimit } from "@/lib/rateLimit";
 import { shortAddress } from "@/lib/ranks";
 
 export const runtime = "nodejs";
@@ -18,6 +20,9 @@ export const runtime = "nodejs";
  * every DEX.
  */
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, "share", 40, 60_000);
+  if (limited) return limited;
+
   let body: { address?: string; addresses?: string[]; verified?: boolean };
   try {
     body = await req.json();
@@ -25,14 +30,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const verified = Boolean(body.verified);
-  const addresses = parseAddressList(body.addresses ?? body.address);
-  if (!addresses.length || !addresses.every(isValidAddress)) {
-    return NextResponse.json({ error: "Invalid address" }, { status: 400 });
+  const submitted = parseAddressList(body.addresses ?? body.address).filter(
+    isValidAddress,
+  );
+  // Only wallets the caller has PROVEN ownership of (signed nonce → cookie)
+  // count. The request body can't be trusted to assert ownership, so a card
+  // can never be built from someone else's address.
+  const proven = await getVerifiedWallets();
+  const addresses = submitted.filter((a) => proven.has(a.toLowerCase()));
+  if (!addresses.length) {
+    return NextResponse.json(
+      { error: "No verified wallet — connect and sign to prove ownership." },
+      { status: 401 },
+    );
   }
+  const verified = true;
 
-  // Personalize the card with the connected X profile, if any.
-  const profile = await getXProfile();
+  // Personalize the card with the connected X profile — but only an
+  // OAuth-verified handle is trusted for public attribution.
+  const xProfile = await getXProfile();
+  const profile = xProfile?.verified ? xProfile : null;
 
   // The wallets to score. With an X account connected, the card mirrors the
   // leaderboard: cumulative across every wallet the account has ever linked.

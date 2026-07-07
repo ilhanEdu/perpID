@@ -79,6 +79,8 @@ export async function GET(req: NextRequest) {
         "_normal",
         "_400x400",
       ),
+      // Proven via direct X OAuth — safe to attribute publicly.
+      verified: true,
     };
 
     const res = NextResponse.redirect(back);

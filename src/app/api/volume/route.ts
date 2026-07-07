@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { aggregateVolume, isValidAddress } from "@/lib/dex";
 import { computeScore } from "@/lib/score";
 import { getCachedVolume, setCachedVolume } from "@/lib/store";
+import { rateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,9 @@ export const runtime = "nodejs";
  * are cached separately (24h).
  */
 export async function GET(req: NextRequest) {
+  const limited = rateLimit(req, "volume", 60, 60_000);
+  if (limited) return limited;
+
   const address = req.nextUrl.searchParams.get("address")?.trim() ?? "";
   const verified = req.nextUrl.searchParams.get("verified") === "1";
   const fresh = req.nextUrl.searchParams.get("fresh") === "1";

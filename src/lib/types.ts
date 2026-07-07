@@ -89,6 +89,10 @@ export interface XProfile {
   handle: string; // without the @
   name: string;
   avatar: string; // https URL
+  // true only when the handle was proven via OAuth ("Sign in with X"). A
+  // manually-typed handle is unverified and is never attributed on the public
+  // leaderboard or share snapshots — anyone can type any handle.
+  verified: boolean;
 }
 
 export interface ShareRecord {

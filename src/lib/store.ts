@@ -176,10 +176,12 @@ export async function getWalletsForHandle(handle: string): Promise<string[]> {
   if (!handle) return [];
   const db = getSupabase();
   if (db) {
+    // Handles are stored lowercased, so an exact `=` gives case-insensitive
+    // matching WITHOUT ILIKE treating `_` (legal in handles) as a wildcard.
     const { data, error } = await db
       .from("wallet_links")
       .select("address")
-      .ilike("x_handle", handle);
+      .eq("x_handle", handle.toLowerCase());
     if (!error && data) {
       return (data as { address: string }[]).map((r) => r.address);
     }
@@ -204,7 +206,8 @@ export async function bindWallets(
 
   const db = getSupabase();
   if (db) {
-    const rows = lowers.map((address) => ({ address, x_handle: handle }));
+    const norm = handle.toLowerCase();
+    const rows = lowers.map((address) => ({ address, x_handle: norm }));
     // ignoreDuplicates → keep the existing owner for already-linked wallets.
     const { error } = await db
       .from("wallet_links")
@@ -212,7 +215,7 @@ export async function bindWallets(
     if (!error) return;
     console.warn(`[store] wallet_links write failed: ${error.message}`);
   }
-  for (const a of lowers) if (!memLinks.has(a)) memLinks.set(a, handle);
+  for (const a of lowers) if (!memLinks.has(a)) memLinks.set(a, handle.toLowerCase());
 }
 
 /**
@@ -242,6 +245,8 @@ export async function upsertLeaderboard(
   const record: LeaderboardEntry = {
     ...entry,
     address,
+    // Store lowercased so handle matching uses `=` (see getWalletsForHandle).
+    x_handle: entry.x_handle ? entry.x_handle.toLowerCase() : entry.x_handle,
     updated_at: new Date().toISOString(),
   };
 
@@ -254,7 +259,7 @@ export async function upsertLeaderboard(
       const { error: delErr } = await db
         .from("leaderboard")
         .delete()
-        .ilike("x_handle", record.x_handle)
+        .eq("x_handle", record.x_handle)
         .neq("address", address);
       if (delErr)
         console.warn(`[store] leaderboard dedupe failed: ${delErr.message}`);

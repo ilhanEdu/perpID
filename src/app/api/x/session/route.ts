@@ -54,6 +54,8 @@ export async function POST(req: NextRequest) {
       "_normal",
       "_400x400",
     ),
+    // Proven via Supabase "Sign in with X" OAuth — safe to attribute publicly.
+    verified: true,
   };
 
   const res = NextResponse.json({ profile });

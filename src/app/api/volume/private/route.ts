@@ -4,6 +4,8 @@ import { fetchDydxVolume } from "@/lib/dex/dydx";
 import { aggregateVolume, isValidAddress } from "@/lib/dex";
 import { computeScore } from "@/lib/score";
 import { getCachedVolume, setCachedVolume } from "@/lib/store";
+import { getVerifiedWallets } from "@/lib/walletAuth";
+import { rateLimit } from "@/lib/rateLimit";
 import type { DexVolume } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -23,6 +25,9 @@ export const runtime = "nodejs";
  * volume API and stay as honest placeholders.
  */
 export async function POST(req: NextRequest) {
+  const limited = rateLimit(req, "volume-private", 40, 60_000);
+  if (limited) return limited;
+
   let body: {
     address?: string;
     paradexJwt?: string;
@@ -38,6 +43,17 @@ export async function POST(req: NextRequest) {
   const address = body.address?.trim() ?? "";
   if (!isValidAddress(address)) {
     return NextResponse.json({ error: "Invalid address" }, { status: 400 });
+  }
+
+  // The extra volume is folded into THIS wallet's cached result, so the caller
+  // must have proven they own it — otherwise it becomes a way to graft dYdX /
+  // Paradex volume onto a wallet the caller doesn't control.
+  const proven = await getVerifiedWallets();
+  if (!proven.has(address.toLowerCase())) {
+    return NextResponse.json(
+      { error: "Verify wallet ownership first." },
+      { status: 401 },
+    );
   }
 
   const extra: DexVolume[] = [];

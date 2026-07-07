@@ -202,8 +202,8 @@ export function V3Card({
         <div className="v3-sparkle" style={{ left: 24, top: 302, width: 6, height: 6, background: "rgba(250,246,236,0.5)" }} />
         <div className="v3-sparkle" style={{ left: 300, top: 322, width: 5, height: 5, background: "var(--accent)" }} />
 
-        {/* verified seal */}
-        {result ? (
+        {/* verified seal — only when the wallet ownership was actually proven */}
+        {result?.verified ? (
           <div className="v3-verified">
             <span className="v3-verified-dot" />
             VERIFIED

@@ -19,12 +19,14 @@ export async function getXProfile(): Promise<XProfile | null> {
   const raw = jar.get(X_COOKIE)?.value;
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as XProfile;
+    const parsed = JSON.parse(raw) as Partial<XProfile>;
     if (!parsed.handle) return null;
     return {
       handle: String(parsed.handle).replace(/^@/, ""),
       name: String(parsed.name ?? parsed.handle),
       avatar: String(parsed.avatar ?? ""),
+      // Missing flag (legacy cookies) or manual handles are unverified.
+      verified: parsed.verified === true,
     };
   } catch {
     return null;

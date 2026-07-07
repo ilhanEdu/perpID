@@ -213,37 +213,39 @@ export async function renderShareCard(share: ShareRecord | null) {
         }}
       />
 
-      {/* corner verified seal */}
-      <div
-        style={{
-          display: "flex",
-          position: "absolute",
-          left: 20 * S,
-          top: 16 * S,
-          alignItems: "center",
-          gap: 4 * S,
-          backgroundImage: foilGradient(theme, 120),
-          color: INK,
-          fontSize: 8 * S,
-          fontWeight: 800,
-          letterSpacing: 1,
-          padding: `${3 * S}px ${7 * S}px`,
-          borderRadius: 999,
-          transform: "rotate(-3deg)",
-          boxShadow: `0 0 ${10 * S}px ${theme.glow}`,
-        }}
-      >
+      {/* corner verified seal — only for proven-ownership snapshots */}
+      {share?.verified ? (
         <div
           style={{
             display: "flex",
-            width: 6 * S,
-            height: 6 * S,
-            backgroundColor: INK,
-            transform: "rotate(45deg)",
+            position: "absolute",
+            left: 20 * S,
+            top: 16 * S,
+            alignItems: "center",
+            gap: 4 * S,
+            backgroundImage: foilGradient(theme, 120),
+            color: INK,
+            fontSize: 8 * S,
+            fontWeight: 800,
+            letterSpacing: 1,
+            padding: `${3 * S}px ${7 * S}px`,
+            borderRadius: 999,
+            transform: "rotate(-3deg)",
+            boxShadow: `0 0 ${10 * S}px ${theme.glow}`,
           }}
-        />
-        <span style={{ display: "flex" }}>VERIFIED</span>
-      </div>
+        >
+          <div
+            style={{
+              display: "flex",
+              width: 6 * S,
+              height: 6 * S,
+              backgroundColor: INK,
+              transform: "rotate(45deg)",
+            }}
+          />
+          <span style={{ display: "flex" }}>VERIFIED</span>
+        </div>
+      ) : null}
 
       {/* orbit rings */}
       <div

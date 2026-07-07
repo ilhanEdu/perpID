@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAccount, useConnect, useDisconnect, useSignTypedData } from "wagmi";
+import {
+  useAccount,
+  useConnect,
+  useDisconnect,
+  useSignMessage,
+  useSignTypedData,
+} from "wagmi";
 import type {
   DexVolume,
   LeaderboardEntry,
@@ -18,7 +24,13 @@ import { getSupabaseBrowser } from "@/lib/supabaseBrowser";
 import { ConnectorIcon, WalletMark } from "@/components/WalletIcons";
 import { V3Card } from "./V3Card";
 
-type Step = "idle" | "scanning" | "signing" | "done" | "error";
+type Step =
+  | "idle"
+  | "verifying"
+  | "scanning"
+  | "signing"
+  | "done"
+  | "error";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
@@ -116,6 +128,40 @@ export function V3App() {
   const { connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { signTypedDataAsync } = useSignTypedData();
+  const { signMessageAsync } = useSignMessage();
+
+  /**
+   * Prove the connected wallet is actually the caller's: fetch a server nonce,
+   * personal_sign it, and let the server bind it to a proven-wallet cookie.
+   * Nothing counts toward the card/leaderboard until this succeeds — the server
+   * ignores any address the caller hasn't signed for.
+   */
+  const proveWallet = useCallback(
+    async (addr: string): Promise<boolean> => {
+      try {
+        const nres = await fetch(
+          `/api/wallet/nonce?address=${encodeURIComponent(addr)}`,
+        );
+        if (!nres.ok) return false;
+        const { message } = await nres.json();
+        if (!message) return false;
+        const signature = await signMessageAsync({
+          account: addr as `0x${string}`,
+          message,
+        });
+        const vres = await fetch("/api/wallet/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address: addr, signature }),
+        });
+        return vres.ok;
+      } catch {
+        // User declined the signature, or a network error.
+        return false;
+      }
+    },
+    [signMessageAsync],
+  );
 
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -222,7 +268,16 @@ export function V3App() {
           continue; // rebuild without the conflicting wallet
         }
 
-        if (shareRes.ok) setCardId(share.id);
+        if (shareRes.ok) {
+          setCardId(share.id);
+          setLinkError(null);
+        } else {
+          // Any other failure (401 unverified, 429 rate-limited, 5xx) — tell
+          // the user instead of leaving the card silently stuck.
+          setLinkError(
+            share.error ?? "Couldn't build your card — please try again.",
+          );
+        }
         await fetch("/api/leaderboard", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -231,6 +286,10 @@ export function V3App() {
         refreshBoard();
         return;
       }
+      // Exhausted every retry (all wallets kept conflicting) — surface it.
+      setLinkError(
+        "Couldn't link these wallets to your card — they may belong to another X account.",
+      );
     },
     [refreshBoard],
   );
@@ -242,10 +301,18 @@ export function V3App() {
       const lower = addr.toLowerCase();
       if (perWallet.current.has(lower) || adding.current.has(lower)) return;
       adding.current.add(lower);
-      setStep("scanning");
       setError(null);
       setLinkError(null);
       try {
+        // Prove ownership first — the server won't count an unproven wallet.
+        setStep("verifying");
+        const proven = await proveWallet(addr);
+        if (!proven) {
+          throw new Error(
+            "Wallet ownership signature required — approve it to build your card.",
+          );
+        }
+        setStep("scanning");
         const data = await scanWallet(addr);
         perWallet.current.set(lower, data);
         const list = [...perWallet.current.keys()];
@@ -259,7 +326,7 @@ export function V3App() {
         adding.current.delete(lower);
       }
     },
-    [scanWallet, syncCardAndBoard],
+    [scanWallet, syncCardAndBoard, proveWallet],
   );
 
   const removeWallet = useCallback(
@@ -439,13 +506,15 @@ export function V3App() {
   }
 
   const scannedNote =
-    step === "scanning"
-      ? `scanning ${V3_DEXES.length} DEXes…`
-      : step === "signing"
-        ? "1 signature → Paradex volume"
-        : step === "error"
-          ? (error ?? "scan failed")
-          : `${wallets.length} wallet${wallets.length === 1 ? "" : "s"} · ${V3_DEXES.length} DEXes scanned`;
+    step === "verifying"
+      ? "sign to prove this wallet is yours…"
+      : step === "scanning"
+        ? `scanning ${V3_DEXES.length} DEXes…`
+        : step === "signing"
+          ? "1 signature → Paradex volume"
+          : step === "error"
+            ? (error ?? "scan failed")
+            : `${wallets.length} wallet${wallets.length === 1 ? "" : "s"} · ${V3_DEXES.length} DEXes scanned`;
 
   const podium = board.slice(0, 3);
   const rows = board.slice(3, 12);
@@ -459,8 +528,8 @@ export function V3App() {
             degen&apos;d?
           </h1>
           <p>
-            One wallet signature. Four perp DEXes. Your entire perp history on
-            one shareable card.
+            One signature to prove the wallet&apos;s yours. Four perp DEXes.
+            Your entire perp history on one shareable card.
           </p>
         </div>
 
@@ -475,7 +544,14 @@ export function V3App() {
               <div className="v3-step-ico v3-step-ico-done">✓</div>
               <div className="v3-step-body">
                 <div className="v3-step-title">𝕏 connected</div>
-                <div className="v3-step-sub">@{xProfile.handle}</div>
+                <div className="v3-step-sub">
+                  @{xProfile.handle}
+                  {!xProfile.verified && (
+                    <span className="v3-unverified" title="Handle entered manually — not shown on the public leaderboard or shared card.">
+                      unverified
+                    </span>
+                  )}
+                </div>
               </div>
               <button className="v3-step-x" onClick={disconnectX}>
                 unlink
@@ -586,7 +662,10 @@ export function V3App() {
                         type="button"
                         className="v3-wallet-add"
                         disabled={
-                          isPending || step === "scanning" || step === "signing"
+                          isPending ||
+                          step === "verifying" ||
+                          step === "scanning" ||
+                          step === "signing"
                         }
                         onClick={() => setAddOpen(true)}
                       >
@@ -627,7 +706,7 @@ export function V3App() {
                       {connectors.length > 1 ? c.name : "Connect wallet"}
                     </div>
                     <div className="v3-step-sub">
-                      1 signature · Hyperliquid + Paradex
+                      sign to prove it&apos;s yours · read-only
                     </div>
                   </div>
                 </button>
@@ -644,7 +723,8 @@ export function V3App() {
                 <strong>Before you connect:</strong> PerpID is an indie,
                 unaudited side-project. It&apos;s strictly read-only — it never
                 requests token approvals, sends transactions, or moves funds
-                (at most one message signature to read Paradex). Connect only a
+                (a message signature proves the wallet is yours, plus at most
+                one more to read Paradex). Connect only a
                 wallet you&apos;re comfortable with — if you&apos;re unsure,
                 don&apos;t.
               </div>

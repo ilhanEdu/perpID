@@ -1,7 +1,12 @@
 -- PerpID Supabase schema
--- Run in the Supabase SQL editor. The app works with just the publishable
--- (anon) key thanks to the policies below; add SUPABASE_SERVICE_ROLE_KEY to
--- .env.local later if you want to drop the anon write policies.
+-- Run in the Supabase SQL editor.
+--
+-- SECURITY: all WRITES go through the server using SUPABASE_SERVICE_ROLE_KEY
+-- (which bypasses RLS). There are intentionally NO public insert/update/delete
+-- policies — the browser only ever holds the anon key, so a public write policy
+-- would let anyone forge leaderboard rows, volume and handles directly against
+-- the REST API, bypassing every server-side check. SUPABASE_SERVICE_ROLE_KEY is
+-- therefore REQUIRED in .env.local; without it the app degrades to in-memory.
 
 create table if not exists volume_cache (
   cache_key text primary key, -- "{address}:{v|u}" (verified vs unverified)
@@ -67,25 +72,35 @@ create table if not exists wallet_links (
 
 create index if not exists wallet_links_handle_idx on wallet_links (x_handle);
 
+-- Normalize existing leaderboard/wallet_link handles to lowercase so exact
+-- (case-insensitive) matching by handle can use `=` instead of ILIKE. ILIKE
+-- treats `_` — legal in X handles — as a wildcard, which let one handle match
+-- (and the dedupe DELETE wipe) another account's rows. See store.ts.
+update leaderboard set x_handle = lower(x_handle) where x_handle is not null;
+update wallet_links set x_handle = lower(x_handle);
+
 alter table volume_cache enable row level security;
 alter table shares enable row level security;
 alter table leaderboard enable row level security;
 alter table wallet_links enable row level security;
 
--- Wallet links are public to read; writes go through the service-role key
--- (which bypasses RLS), so there is intentionally no public write policy.
+-- READ-ONLY public access. Every table is public to read (leaderboard, shares
+-- and cache are non-sensitive snapshots). All writes require the service-role
+-- key, which bypasses RLS — so there are deliberately no public write policies.
+-- Drop any permissive write policies left over from earlier versions:
+drop policy if exists "insert shares" on shares;
+drop policy if exists "insert cache" on volume_cache;
+drop policy if exists "update cache" on volume_cache;
+drop policy if exists "insert leaderboard" on leaderboard;
+drop policy if exists "update leaderboard" on leaderboard;
+
+-- Read policies (drop-then-create so this whole file is safely re-runnable).
+drop policy if exists "read wallet_links" on wallet_links;
+drop policy if exists "read shares" on shares;
+drop policy if exists "read cache" on volume_cache;
+drop policy if exists "read leaderboard" on leaderboard;
+
 create policy "read wallet_links" on wallet_links for select using (true);
-
--- Shares are public snapshots; anyone may read, the app inserts them.
 create policy "read shares" on shares for select using (true);
-create policy "insert shares" on shares for insert with check (true);
-
--- Cache is written server-side with the anon key (no service key configured).
 create policy "read cache" on volume_cache for select using (true);
-create policy "insert cache" on volume_cache for insert with check (true);
-create policy "update cache" on volume_cache for update using (true);
-
--- Leaderboard is public; the app upserts rows server-side.
 create policy "read leaderboard" on leaderboard for select using (true);
-create policy "insert leaderboard" on leaderboard for insert with check (true);
-create policy "update leaderboard" on leaderboard for update using (true);

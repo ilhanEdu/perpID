@@ -37,7 +37,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const profile = { handle, name: handle, avatar: unavatarUrl(handle) };
+  // Manually-typed handle: anyone can enter any handle, so it is UNVERIFIED and
+  // only personalizes the local card — never attributed on public surfaces.
+  const profile = {
+    handle,
+    name: handle,
+    avatar: unavatarUrl(handle),
+    verified: false,
+  };
   const res = NextResponse.json({ profile });
   res.cookies.set(X_COOKIE, JSON.stringify(profile), {
     httpOnly: true,
