@@ -17,7 +17,6 @@ import type {
 import { formatUsd, shortAddress } from "@/lib/ranks";
 import { tierForVolume } from "@/lib/tiers";
 import { unlockParadex } from "@/lib/paradex";
-import { unlockLighter } from "@/lib/lighter";
 import { V3_DEXES } from "@/lib/dexRoster";
 import { mergeVolumeResults } from "@/lib/dex/merge";
 import { shareLink } from "@/lib/appUrl";
@@ -418,55 +417,6 @@ export function V3App() {
     setDydxBusy(false);
   }
 
-  // ---- Lighter unlock (API-key auth token) ----
-  // Lighter trade history is auth-gated. The user pastes their Lighter API
-  // private key + key index; we mint a read-only auth token in-browser (WASM
-  // signer) and send only that token to the server. The key never leaves here.
-  const [lighterOpen, setLighterOpen] = useState(false);
-  const [lighterKey, setLighterKey] = useState("");
-  const [lighterKeyIndex, setLighterKeyIndex] = useState("");
-  const [lighterBusy, setLighterBusy] = useState(false);
-  const [lighterErr, setLighterErr] = useState<string | null>(null);
-
-  async function connectLighter() {
-    const primary = wallets[0];
-    if (!primary) {
-      setLighterErr("Connect a wallet first");
-      return;
-    }
-    const keyIndex = Number(lighterKeyIndex.trim());
-    if (!lighterKey.trim() || !Number.isInteger(keyIndex) || keyIndex < 0) {
-      setLighterErr("Enter your API private key and key index");
-      return;
-    }
-    setLighterBusy(true);
-    setLighterErr(null);
-    const unlock = await unlockLighter({
-      address: primary,
-      apiPrivateKey: lighterKey.trim(),
-      apiKeyIndex: keyIndex,
-    });
-    if (unlock.status !== "ok" || !unlock.authToken) {
-      setLighterErr(unlock.message ?? "Couldn't unlock Lighter");
-      setLighterBusy(false);
-      return;
-    }
-    const ok = await applyPrivate(
-      {
-        lighterAuth: unlock.authToken,
-        lighterAccountIndex: unlock.accountIndex,
-      },
-      "lighter",
-      setLighterErr,
-    );
-    if (ok) {
-      setLighterKey("");
-      setLighterKeyIndex("");
-      setLighterOpen(false);
-    }
-    setLighterBusy(false);
-  }
-
   // "+ add another wallet" opens a picker of every available connector
   // (installed browser wallets via EIP-6963 + WalletConnect when configured).
   const [addOpen, setAddOpen] = useState(false);
@@ -823,67 +773,6 @@ export function V3App() {
                 onClick={() => setDydxOpen(true)}
               >
                 + add dYdX volume (dydx1… address)
-              </button>
-            ))}
-
-          {/* Lighter unlock via API-key auth token (signed in-browser) */}
-          {wallets.length > 0 &&
-            (lighterOpen ? (
-              <form
-                className="v3-ext-form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void connectLighter();
-                }}
-              >
-                <input
-                  value={lighterKey}
-                  onChange={(e) => setLighterKey(e.target.value)}
-                  placeholder="Lighter API private key"
-                  type="password"
-                  autoComplete="off"
-                  autoFocus
-                  disabled={lighterBusy}
-                />
-                <input
-                  value={lighterKeyIndex}
-                  onChange={(e) =>
-                    setLighterKeyIndex(e.target.value.replace(/[^0-9]/g, ""))
-                  }
-                  placeholder="API key index (e.g. 2)"
-                  inputMode="numeric"
-                  disabled={lighterBusy}
-                />
-                <div className="v3-ext-row">
-                  <button
-                    type="submit"
-                    disabled={
-                      lighterBusy || !lighterKey.trim() || !lighterKeyIndex.trim()
-                    }
-                  >
-                    {lighterBusy ? "signing…" : "Add"}
-                  </button>
-                  <button
-                    type="button"
-                    className="v3-ext-cancel"
-                    onClick={() => {
-                      setLighterOpen(false);
-                      setLighterErr(null);
-                    }}
-                  >
-                    cancel
-                  </button>
-                  <span className="v3-ext-hint">key stays in your browser</span>
-                </div>
-                {lighterErr && <div className="v3-error">{lighterErr}</div>}
-              </form>
-            ) : (
-              <button
-                type="button"
-                className="v3-ext-toggle"
-                onClick={() => setLighterOpen(true)}
-              >
-                + add Lighter volume (API key)
               </button>
             ))}
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchParadexVolumeWithJwt } from "@/lib/dex/private";
-import { fetchLighterVolumeWithAuth } from "@/lib/dex/lighter";
 import { fetchDydxVolume } from "@/lib/dex/dydx";
 import { aggregateVolume, isValidAddress } from "@/lib/dex";
 import { computeScore } from "@/lib/score";
@@ -16,16 +15,14 @@ export const runtime = "nodejs";
  * Body: {
  *   address: string,
  *   paradexJwt?: string,        // from the one-signature Paradex unlock
- *   lighterAuth?: string,       // Lighter read-only auth token (client-minted)
- *   lighterAccountIndex?: number,
  *   dydxAddress?: string,       // user's dydx1… address (public volume)
  * }
  *
  * Accepts auth material the client obtained (a wallet-signed token, or a
- * read-only auth token minted in-browser from the user's API key), fetches
- * private-API volume, and merges it with the public aggregation. Credentials
- * are used for this request only and never stored. Aster / Variational have no
- * public per-wallet volume API and stay as honest placeholders.
+ * dydx1… address the user pasted), fetches private-API volume, and merges it
+ * with the public aggregation. Credentials are used for this request only and
+ * never stored. Lighter / Aster / Variational have no wallet-only volume API
+ * and stay as honest placeholders.
  */
 export async function POST(req: NextRequest) {
   const limited = rateLimit(req, "volume-private", 40, 60_000);
@@ -35,8 +32,6 @@ export async function POST(req: NextRequest) {
     address?: string;
     paradexJwt?: string;
     paradexNoAccount?: boolean;
-    lighterAuth?: string;
-    lighterAccountIndex?: number;
     dydxAddress?: string;
   };
   try {
@@ -72,12 +67,6 @@ export async function POST(req: NextRequest) {
       volumeUsd: 0,
       note: "No Paradex account for this wallet",
     });
-  }
-
-  if (body.lighterAuth && typeof body.lighterAccountIndex === "number") {
-    extra.push(
-      await fetchLighterVolumeWithAuth(body.lighterAccountIndex, body.lighterAuth),
-    );
   }
 
   if (body.dydxAddress) {

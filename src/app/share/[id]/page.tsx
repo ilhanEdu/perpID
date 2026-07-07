@@ -72,7 +72,7 @@ export default async function SharePage({ params }: Props) {
 
       <footer className="v3-footer">
         <div>PerpID — read-only, your keys stay yours</div>
-        <div>data: Hyperliquid · Lighter · dYdX · Paradex</div>
+        <div>data: Hyperliquid · dYdX · Paradex</div>
       </footer>
     </div>
   );

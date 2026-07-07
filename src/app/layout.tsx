@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: "PerpID — your on-chain trading card",
   description:
-    "Prove your wallets, then aggregate your lifetime perp volume across Hyperliquid, Lighter, dYdX and Paradex into one shareable card and a public leaderboard.",
+    "Prove your wallets, then aggregate your lifetime perp volume across Hyperliquid, dYdX and Paradex into one shareable card and a public leaderboard.",
   openGraph: {
     title: "PerpID — your on-chain trading card",
     description:
