@@ -6,9 +6,9 @@ import type { DexVolume } from "../types";
  * listed honestly so the scan shows full coverage of the ecosystem:
  *
  *  - Paradex: private API, unlocked with ONE wallet signature (JWT).
+ *  - Lighter: private API, unlocked with a Lighter API-key auth token.
  *  - Aster / edgeX / Extended: exchange-issued API keys only.
  *  - Jupiter / Drift / Pacifica: Solana wallets — EVM address can't map.
- *  - GMX: on-chain, wallet-keyed indexer access not public yet.
  *  - Variational: exchange-issued keys only.
  */
 export function privateDexPlaceholders(connected: boolean): DexVolume[] {
@@ -21,6 +21,15 @@ export function privateDexPlaceholders(connected: boolean): DexVolume[] {
       note: connected
         ? "Approve the single wallet signature to include Paradex"
         : "Connect wallet — included automatically via one signature",
+    },
+    {
+      dex: "lighter",
+      name: "Lighter",
+      status: "auth_required",
+      volumeUsd: 0,
+      note: connected
+        ? "Add your Lighter API key to include Lighter volume"
+        : "Connect wallet, then add a Lighter API key to include it",
     },
   ];
 }

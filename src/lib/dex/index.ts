@@ -3,7 +3,6 @@ import { computeScore } from "../score";
 import { getCachedVolume } from "../store";
 import { fetchHyperliquidVolume } from "./hyperliquid";
 import { fetchDydxVolume } from "./dydx";
-import { fetchGmxVolume } from "./gmx";
 import { privateDexPlaceholders } from "./private";
 import { mergeVolumeResults } from "./merge";
 
@@ -11,10 +10,9 @@ export async function aggregateVolume(
   address: string,
   opts: { connected?: boolean; verified?: boolean; extra?: DexVolume[] } = {},
 ): Promise<VolumeResult> {
-  const [hyperliquid, dydx, gmx] = await Promise.all([
+  const [hyperliquid, dydx] = await Promise.all([
     fetchHyperliquidVolume(address),
     fetchDydxVolume(address),
-    fetchGmxVolume(address),
   ]);
 
   const privates = privateDexPlaceholders(Boolean(opts.connected));
@@ -23,7 +21,6 @@ export async function aggregateVolume(
   const breakdown: DexVolume[] = [
     hyperliquid,
     dydx,
-    gmx,
     ...privates.map((p) => extras.get(p.dex) ?? p),
   ];
 

@@ -2,12 +2,25 @@ import type { DexVolume } from "../types";
 
 const API = "https://mainnet.zklighter.elliot.ai/api/v1";
 
+interface LighterTrade {
+  usd_amount?: string;
+  size?: string;
+  price?: string;
+}
+
 /**
- * Lighter maps L1 (EVM) addresses to internal account indices publicly, but
- * per-account trade history requires an authenticated session. We detect the
- * account so the UI can prompt for wallet auth.
+ * Lighter has no public per-wallet volume endpoint — trade history is auth
+ * gated. The client mints a short-lived read-only auth token from the user's
+ * Lighter API key (via the WASM signer, in-browser) and passes it here along
+ * with the account index it resolved from the wallet's L1 address. We page
+ * through /trades and sum each fill's notional (`usd_amount`).
+ *
+ * See src/lib/lighter.ts for the client-side unlock that produces `authToken`.
  */
-export async function fetchLighterVolume(address: string): Promise<DexVolume> {
+export async function fetchLighterVolumeWithAuth(
+  accountIndex: number,
+  authToken: string,
+): Promise<DexVolume> {
   const base: DexVolume = {
     dex: "lighter",
     name: "Lighter",
@@ -15,33 +28,51 @@ export async function fetchLighterVolume(address: string): Promise<DexVolume> {
     volumeUsd: 0,
   };
 
-  if (!address.startsWith("0x")) {
-    return { ...base, status: "unsupported", note: "EVM addresses only" };
+  if (!Number.isInteger(accountIndex) || accountIndex < 0) {
+    return { ...base, status: "no_account", note: "No Lighter account" };
   }
 
   try {
-    const res = await fetch(
-      `${API}/account?by=l1_address&value=${encodeURIComponent(address)}`,
-      { signal: AbortSignal.timeout(15_000) },
-    );
-    const data: {
-      code?: number;
-      accounts?: { index: number; total_order_count: number }[];
-    } = await res.json();
+    let total = 0;
+    let cursor: string | undefined;
+    // /trades pages at 100; cap pages defensively (mirrors the Paradex sum).
+    for (let page = 0; page < 200; page++) {
+      const url = new URL(`${API}/trades`);
+      url.searchParams.set("account_index", String(accountIndex));
+      url.searchParams.set("market_id", "255"); // all markets
+      url.searchParams.set("sort_by", "timestamp");
+      url.searchParams.set("sort_dir", "desc");
+      url.searchParams.set("limit", "100");
+      url.searchParams.set("auth", authToken); // schema-documented auth param
+      if (cursor) url.searchParams.set("cursor", cursor);
 
-    if (data.code === 21100 || !data.accounts?.length) {
-      return { ...base, status: "no_account", note: "No Lighter account" };
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (res.status === 401 || res.status === 403) {
+        return { ...base, status: "auth_required", note: "Token expired" };
+      }
+      if (!res.ok) return { ...base, note: `API returned ${res.status}` };
+
+      const data: { trades?: LighterTrade[]; next_cursor?: string | null } =
+        await res.json();
+
+      const trades = data.trades ?? [];
+      for (const t of trades) {
+        const notional =
+          t.usd_amount != null
+            ? Number(t.usd_amount)
+            : Number(t.price) * Number(t.size);
+        if (Number.isFinite(notional)) total += notional;
+      }
+      if (!data.next_cursor || !trades.length) break;
+      cursor = data.next_cursor;
     }
 
-    const orders = data.accounts.reduce(
-      (sum, a) => sum + (a.total_order_count ?? 0),
-      0,
-    );
-    return {
-      ...base,
-      status: "auth_required",
-      note: `Account found (${orders.toLocaleString()} orders) — volume needs Lighter session keys, coming soon`,
-    };
+    if (total <= 0) {
+      return { ...base, status: "no_account", note: "No Lighter trades" };
+    }
+    return { ...base, status: "ok", volumeUsd: total };
   } catch {
     return { ...base, note: "Request failed" };
   }
